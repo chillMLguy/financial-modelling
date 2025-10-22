@@ -31,11 +31,38 @@ def build_features(df: pd.DataFrame):
     return out
 
 
+def make_supervised(df: pd.DataFrame, features: list[str], target: str, window: int = 60, horizon: int = 1):
+    df = df.copy()
+    X_list = []
+    y_list = []
+    idx_list = []
+
+    data_feat = df[features].to_numpy(dtype=np.float32)
+    data_targ = df[target].to_numpy(dtype=np.float32)
+    idx = df.index
+
+    n = len(df)
+    for i in range(window, n - horizon + 1):
+        X_list.append(data_feat[i - window:i])
+        y_list.append(data_targ[i + horizon - 1])
+        idx_list.append(idx[i + horizon - 1])
+
+    X = np.stack(X_list)
+    y = np.array(y_list)
+    idx_out = np.array(idx_list)
+
+    return X, y, idx_out
+
+
+"""
 def make_supervised(
     df: pd.DataFrame, window: int, horizon: int, features: list, target: str
 ):
     X, y, idx = [], [], []
-    values = df[features, target].values
+    columns = list(features) + [(target)]
+    values = df.loc[:, columns].to_numpy()
+    print(columns)
+    
     for i in range(window, len(values) - horizon + 1):
         X.append(values[i - window : i, :-1])
         y.append(values[i + horizon - 1, -1])
@@ -46,7 +73,7 @@ def make_supervised(
     idx = np.array(idx)
 
     return X, y, idx
-
+"""
 
 class LSTMmodel(nn.Module):
     def __init__(self, n_features, hidden_lstm_units, dropout):

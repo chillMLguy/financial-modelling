@@ -53,6 +53,7 @@ features_df = data.copy()
 full_features = features_df[feature_cols]
 target = features_df["ret"]
 
+curves = []
+fold_metrics = []
 
-
-print(target)
+X_all, y_all, idx_all = make_supervised(features_df, features = feature_cols, target = 'ret', window=window, horizon=horizon)
