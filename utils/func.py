@@ -31,41 +31,19 @@ def build_features(df: pd.DataFrame):
     return out
 
 
-def make_supervised(df: pd.DataFrame, features: list[str], target: str, window: int = 60, horizon: int = 1):
-    df = df.copy()
-    X_list = []
-    y_list = []
-    idx_list = []
-
-    data_feat = df[features].to_numpy(dtype=np.float32)
-    data_targ = df[target].to_numpy(dtype=np.float32)
-    idx = df.index
-
-    n = len(df)
-    for i in range(window, n - horizon + 1):
-        X_list.append(data_feat[i - window:i])
-        y_list.append(data_targ[i + horizon - 1])
-        idx_list.append(idx[i + horizon - 1])
-
-    X = np.stack(X_list)
-    y = np.array(y_list)
-    idx_out = np.array(idx_list)
-
-    return X, y, idx_out
-
-
 """
-def make_supervised(
-    df: pd.DataFrame, window: int, horizon: int, features: list, target: str
-):
+def make_supervised(df: pd.DataFrame, window: int, horizon: int, features: list, target: str):
     X, y, idx = [], [], []
-    columns = list(features) + [(target)]
-    values = df.loc[:, columns].to_numpy()
-    print(columns)
-    
-    for i in range(window, len(values) - horizon + 1):
-        X.append(values[i - window : i, :-1])
-        y.append(values[i + horizon - 1, -1])
+    #columns = list(features) + [(target,)]
+    #values = df.loc[:, columns].to_numpy()
+    #print(columns)
+    features_values = df.drop(target, axis =1)
+    target_values = df.loc[:,target]
+
+
+    for i in range(window, len(target_values) - horizon + 1):
+        X.append(features_values[i - window : i,:])
+        y.append(target_values[i + horizon - 1])
         idx.append(df.index[i + horizon - 1])
 
     X = np.array(X)
@@ -74,6 +52,38 @@ def make_supervised(
 
     return X, y, idx
 """
+
+
+def make_supervised(
+    df: pd.DataFrame, window: int, horizon: int, features: list, target: str
+):
+
+    if features:
+        features_values = df.loc[:, features].to_numpy()
+    else:
+        features_values = df.drop(columns=[target]).to_numpy()
+
+    target_values = df.loc[:, target].to_numpy()
+
+    X, y, idx = [], [], []
+    n = len(df)
+
+    for i in range(window, n - horizon + 1):
+        X.append(features_values[i - window : i, :])
+        y.append(target_values[i + horizon - 1])
+        idx.append(df.index[i + horizon - 1])
+
+    if X:
+        X = np.stack(X)
+    else:
+        n_feat = features_values.shape[1]
+        X = np.empty((0, window, n_feat))
+
+    y = np.asarray(y)
+    idx = np.asarray(idx)
+
+    return X, y, idx
+
 
 class LSTMmodel(nn.Module):
     def __init__(self, n_features, hidden_lstm_units, dropout):
@@ -102,7 +112,8 @@ def train(
     lr: int,
 ):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = model.to_device(device)
+    device = torch.device(device)
+    model = model.to(device)
 
     n = len(X_tr)
     n_val = int(n * val_split)
@@ -151,7 +162,8 @@ def train(
 
 def predict(model: nn.Module, X_te: np.array, y_te: np.array, device: str):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = model.to_device(device)
+    device = torch.device(device)
+    model = model.to(device)
     model.eval()
     ds = TensorDataset(torch.from_numpy(X_te), torch.zeros((len(X_te), 1)))
     dl = DataLoader(ds, batch_size=1024, shuffle=False)
@@ -191,6 +203,10 @@ def backtest_daily_full_invest(
         if sig == 1:
             value = value * (1 - fee_buy)
             value = value * (1 + r)
+            value = value * (1 - fee_sell)
+        if sig == -1:
+            value = value * (1 - fee_buy)
+            value = value * (1 - r)
             value = value * (1 - fee_sell)
         else:
             value = value

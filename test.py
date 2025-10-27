@@ -9,7 +9,18 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
-from utils.func import fetch_prices, build_features, make_supervised, LSTMmodel, train, predict, walk_forward_split, backtest_daily_full_invest, buy_and_hold_dollars, metrics
+from utils.func import (
+    fetch_prices,
+    build_features,
+    make_supervised,
+    LSTMmodel,
+    train,
+    predict,
+    walk_forward_split,
+    backtest_daily_full_invest,
+    buy_and_hold_dollars,
+    metrics,
+)
 
 start_date = "2015-01-01"
 end_date = None
@@ -44,7 +55,7 @@ print("==========Testing strategy==============")
 data = fetch_prices(assets[0], start_date, end_date)
 data = build_features(data)
 
-feature_cols = [c for c in data.columns if c not in ("ret",)]
+feature_cols = [c for c in data.columns if (c not in [("ret", "")])]
 
 preds = pd.Series(index=data.index, dtype=float)
 
@@ -56,4 +67,8 @@ target = features_df["ret"]
 curves = []
 fold_metrics = []
 
-X_all, y_all, idx_all = make_supervised(features_df, features = feature_cols, target = 'ret', window=window, horizon=horizon)
+X_all, y_all, idx_all = make_supervised(
+    features_df, features=feature_cols, target="ret", window=window, horizon=horizon
+)
+print(idx_all)
+print(y_all)
